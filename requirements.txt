@@ -1,0 +1,29 @@
+# Python 3.13 — versions pinned for reproducibility
+
+# Data & ML
+numpy==2.5.3
+pandas==3.0.6
+scikit-learn==1.9.1
+joblib==1.6.0
+
+# Visualisation / EDA
+matplotlib==3.11.2
+seaborn==0.13.2
+jupyter==1.1.1
+ipykernel==7.4.0
+
+# Experiment tracking
+mlflow==3.16.1
+
+# Serving API
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+prometheus-client==0.26.0
+
+# Testing & linting
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx==0.28.1
+flake8==7.4.1
+black==26.5.1

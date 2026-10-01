@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MLflow local tracking
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Raw data is re-downloadable via scripts/download_data.py
+data/raw/*
+!data/raw/.gitkeep
+
+# Course instructions (kept local only)
+MLOps Assignment 1 Instructions.pdf
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
