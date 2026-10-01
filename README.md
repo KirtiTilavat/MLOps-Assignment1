@@ -65,6 +65,40 @@ The saved artifact `models/model.joblib` is a single scikit-learn `Pipeline`
 (preprocessing + classifier), so raw patient values go in and predictions come out.
 `models/metadata.json` records the features, chosen hyperparameters and metrics.
 
+## Prediction API (FastAPI)
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/predict` | patient JSON (13 validated fields) → prediction, confidence, probability, risk level |
+| GET | `/health` | liveness / readiness check |
+| GET | `/` | model name, training date, test metrics |
+| GET | `/docs` | interactive Swagger UI |
+
+Run without Docker: `uvicorn app.main:app --port 8000`
+
+## Docker
+
+```powershell
+docker build -t heart-disease-api:1.0 .
+docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.0
+
+# PowerShell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict `
+  -ContentType "application/json" -InFile sample_request.json
+# bash / Git Bash
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d @sample_request.json
+```
+
+Example response:
+
+```json
+{"prediction": 1, "label": "disease", "confidence": 0.9337,
+ "probability_disease": 0.9337, "risk_level": "high", "model_name": "logistic_regression"}
+```
+
+The image copies the trained pipeline from `models/`, runs as a non-root user and has a
+Docker `HEALTHCHECK` on `/health`.
+
 ## Tests and linting
 
 ```powershell
@@ -81,6 +115,7 @@ black --check src tests scripts app
 |---|---|---|
 | **lint** | flake8, black --check | — |
 | **test** (needs lint) | pytest with coverage | `test-reports` (JUnit XML, coverage XML) |
+| **docker** (needs test) | build image, start container, test `/health`, `/predict`, invalid input → 422 | container logs |
 | **train** (needs test) | download → clean → train + MLflow → smoke-test prediction | `model-and-training-artifacts` (model, metadata, plots, MLflow DB) |
 
 Each job only runs if the previous one succeeded, so a lint or test error fails the

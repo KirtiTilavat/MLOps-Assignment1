@@ -55,6 +55,43 @@ jobs:
           name: test-reports
           path: reports/
 
+  docker:
+    name: Docker build & smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t heart-disease-api:${{ github.sha }} .
+      - name: Start container
+        run: |
+          docker run -d --name heart-api -p 8000:8000 heart-disease-api:${{ github.sha }}
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && break
+            sleep 2
+          done
+      - name: Smoke test endpoints
+        run: |
+          set -e
+          curl -sf http://localhost:8000/health | tee health.json
+          echo
+          curl -sf -X POST http://localhost:8000/predict \
+               -H "Content-Type: application/json" -d @sample_request.json | tee predict.json
+          echo
+          python3 - <<'EOF'
+          import json
+          r = json.load(open("predict.json"))
+          assert r["prediction"] in (0, 1), r
+          assert 0.5 <= r["confidence"] <= 1, r
+          print("Prediction response OK:", r)
+          EOF
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/predict \
+                 -H "Content-Type: application/json" -d '{"age": 500}')
+          test "$code" = "422" && echo "Invalid input correctly rejected (422)"
+      - name: Container logs
+        if: always()
+        run: docker logs heart-api
+
   train:
     name: Train model
     needs: test
