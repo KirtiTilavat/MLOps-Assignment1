@@ -21,7 +21,7 @@ MODEL_PATH = ROOT / "models" / "model.joblib"
 METADATA_PATH = ROOT / "models" / "metadata.json"
 
 # Probability-of-disease bands used to give a human-readable risk level.
-RISK_BANDS = [(0.35, "low"), (0.65, "moderate"), (1.01, "high")]
+RISK_BANDS = [(0.30, "low"), (0.65, "moderate"), (1.01, "high")]
 
 SAMPLE_PATIENT = {
     "age": 54,
