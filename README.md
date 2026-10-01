@@ -79,8 +79,8 @@ Run without Docker: `uvicorn app.main:app --port 8000`
 ## Docker
 
 ```powershell
-docker build -t heart-disease-api:1.0 .
-docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.0
+docker build -t heart-disease-api:1.1 .
+docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.1
 
 # PowerShell
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict `
@@ -96,8 +96,15 @@ Example response:
  "probability_disease": 0.9337, "risk_level": "high", "model_name": "logistic_regression"}
 ```
 
-The image copies the trained pipeline from `models/`, runs as a non-root user and has a
-Docker `HEALTHCHECK` on `/health`.
+The Dockerfile is a **multi-stage build**:
+
+1. **trainer** stage — installs the full `requirements.txt`, downloads the data and trains
+   the model (`src.train`), so the model is reproducibly built from source.
+2. **runtime** stage — installs only `requirements-api.txt` and copies the trained
+   `model.joblib` + `metadata.json` from the trainer stage.
+
+This reduced the image from 1.11 GB (single stage, full requirements) to ~486 MB.
+The container runs as a non-root user and has a Docker `HEALTHCHECK` on `/health`.
 
 ## Tests and linting
 
