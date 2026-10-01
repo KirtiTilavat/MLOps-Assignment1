@@ -78,9 +78,7 @@ MODEL_SPECS = {
 
 def split_data(df: pd.DataFrame):
     X, y = df[FEATURES], df[TARGET]
-    return train_test_split(
-        X, y, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE
-    )
+    return train_test_split(X, y, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE)
 
 
 def build_pipeline(estimator) -> Pipeline:
@@ -126,8 +124,12 @@ def save_plots(name, model, X_test, y_test) -> list[Path]:
 
     fig, ax = plt.subplots(figsize=(5, 4))
     ConfusionMatrixDisplay.from_estimator(
-        model, X_test, y_test, display_labels=["No disease", "Disease"],
-        cmap="Blues", ax=ax,
+        model,
+        X_test,
+        y_test,
+        display_labels=["No disease", "Disease"],
+        cmap="Blues",
+        ax=ax,
     )
     ax.set_title(f"Confusion matrix — {name}")
     paths.append(PLOT_DIR / f"{name}_confusion_matrix.png")
@@ -160,8 +162,12 @@ def log_parent_run(name, search, result, plots, X_train) -> str:
     mlflow.set_tags({"model_type": name, "selection_metric": SELECTION_METRIC})
     mlflow.log_params({k.replace("clf__", ""): v for k, v in search.best_params_.items()})
     mlflow.log_params(
-        {"cv_folds": 5, "test_size": TEST_SIZE, "random_state": RANDOM_STATE,
-         "n_candidates": len(search.cv_results_["params"])}
+        {
+            "cv_folds": 5,
+            "test_size": TEST_SIZE,
+            "random_state": RANDOM_STATE,
+            "n_candidates": len(search.cv_results_["params"]),
+        }
     )
     mlflow.log_metrics({f"cv_{k}": v for k, v in result["cv"].items()})
     mlflow.log_metrics({f"test_{k}": v for k, v in result["test"].items()})
@@ -212,9 +218,7 @@ def main() -> None:
                 "run_id": run.info.run_id,
             }
             plots = save_plots(name, search.best_estimator_, X_test, y_test)
-            results[name]["model_uri"] = log_parent_run(
-                name, search, results[name], plots, X_train
-            )
+            results[name]["model_uri"] = log_parent_run(name, search, results[name], plots, X_train)
             log_child_runs(name, search)
         print(f"\n== {name} ==")
         print("best params:", search.best_params_)

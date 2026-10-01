@@ -24,9 +24,19 @@ METADATA_PATH = ROOT / "models" / "metadata.json"
 RISK_BANDS = [(0.35, "low"), (0.65, "moderate"), (1.01, "high")]
 
 SAMPLE_PATIENT = {
-    "age": 54, "sex": 1, "cp": 4, "trestbps": 130, "chol": 250, "fbs": 0,
-    "restecg": 2, "thalach": 140, "exang": 1, "oldpeak": 1.6, "slope": 2,
-    "ca": 1, "thal": 7,
+    "age": 54,
+    "sex": 1,
+    "cp": 4,
+    "trestbps": 130,
+    "chol": 250,
+    "fbs": 0,
+    "restecg": 2,
+    "thalach": 140,
+    "exang": 1,
+    "oldpeak": 1.6,
+    "slope": 2,
+    "ca": 1,
+    "thal": 7,
 }
 
 
@@ -63,13 +73,15 @@ def predict(records: dict | list[dict], model=None) -> list[dict]:
     results = []
     for p in proba:
         pred = int(p >= 0.5)
-        results.append({
-            "prediction": pred,
-            "label": "disease" if pred else "no disease",
-            "confidence": round(float(p if pred else 1 - p), 4),
-            "probability_disease": round(float(p), 4),
-            "risk_level": risk_level(float(p)),
-        })
+        results.append(
+            {
+                "prediction": pred,
+                "label": "disease" if pred else "no disease",
+                "confidence": round(float(p if pred else 1 - p), 4),
+                "probability_disease": round(float(p), 4),
+                "risk_level": risk_level(float(p)),
+            }
+        )
     return results
 
 

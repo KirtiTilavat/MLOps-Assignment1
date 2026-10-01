@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  lint:
+    name: Lint (flake8 + black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install linters
+        run: pip install flake8==7.4.1 black==26.5.1
+      - name: flake8
+        run: flake8 src tests scripts app
+      - name: black --check
+        run: black --check --diff src tests scripts app
+
+  test:
+    name: Unit tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run pytest with coverage
+        run: |
+          mkdir -p reports
+          pytest -v --cov --cov-report=term-missing --cov-report=xml:reports/coverage.xml \
+                 --junitxml=reports/junit.xml
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: reports/
+
+  train:
+    name: Train model
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Download data
+        run: python scripts/download_data.py --force
+      - name: Clean data
+        run: python -m src.data_processing
+      - name: Train and track with MLflow
+        run: python -m src.train
+      - name: Smoke-test saved model
+        run: python -m src.predict
+      - name: Write metrics to job summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.load(open("models/metadata.json"))
+          print(f"### Selected model: `{m['model_name']}` (by CV {m['selection_metric']})\n")
+          print("| model | cv_recall | test_accuracy | test_precision | test_recall | test_roc_auc |")
+          print("|---|---|---|---|---|---|")
+          for name, r in m["all_models"].items():
+              t, c = r["test"], r["cv"]
+              print(f"| {name} | {c['recall']:.3f} | {t['accuracy']:.3f} | {t['precision']:.3f}"
+                    f" | {t['recall']:.3f} | {t['roc_auc']:.3f} |")
+          EOF
+      - name: Upload model and training artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-and-training-artifacts
+          path: |
+            models/
+            screenshots/training/
+            mlflow.db
+            mlartifacts/

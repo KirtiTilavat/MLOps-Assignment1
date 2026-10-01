@@ -1,5 +1,7 @@
 # Heart Disease Risk Prediction — End-to-End MLOps
 
+[![CI](https://github.com/KirtiTilavat/MLOps-Assignment1/actions/workflows/ci.yml/badge.svg)](https://github.com/KirtiTilavat/MLOps-Assignment1/actions/workflows/ci.yml)
+
 MLOps Assignment 01 (AIMLCZG523). A classifier that predicts heart-disease risk from
 patient health data (UCI Heart Disease dataset), served as a containerised, monitored API.
 
@@ -62,5 +64,26 @@ mlflow ui --backend-store-uri sqlite:///mlflow.db
 The saved artifact `models/model.joblib` is a single scikit-learn `Pipeline`
 (preprocessing + classifier), so raw patient values go in and predictions come out.
 `models/metadata.json` records the features, chosen hyperparameters and metrics.
+
+## Tests and linting
+
+```powershell
+pytest --cov                      # 24 unit tests on synthetic data (offline, ~6 s)
+flake8 src tests scripts app
+black --check src tests scripts app
+```
+
+## CI/CD (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every push / pull request to `main`:
+
+| Job | Steps | Artifacts |
+|---|---|---|
+| **lint** | flake8, black --check | — |
+| **test** (needs lint) | pytest with coverage | `test-reports` (JUnit XML, coverage XML) |
+| **train** (needs test) | download → clean → train + MLflow → smoke-test prediction | `model-and-training-artifacts` (model, metadata, plots, MLflow DB) |
+
+Each job only runs if the previous one succeeded, so a lint or test error fails the
+pipeline with a clear log. The train job also writes a metrics table to the run summary.
 
 _Further sections (API, deployment, monitoring) are added as each phase is completed._
