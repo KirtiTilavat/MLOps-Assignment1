@@ -128,4 +128,29 @@ black --check src tests scripts app
 Each job only runs if the previous one succeeded, so a lint or test error fails the
 pipeline with a clear log. The train job also writes a metrics table to the run summary.
 
-_Further sections (API, deployment, monitoring) are added as each phase is completed._
+## Kubernetes deployment (Docker Desktop)
+
+Manifests in `k8s/`: a dedicated `heart-disease` namespace, a 2-replica `Deployment`
+(rolling update with `maxUnavailable: 0`, CPU/memory requests and limits, readiness and
+liveness probes on `/health`, non-root) and a `LoadBalancer` `Service` on port 80.
+
+Enable Kubernetes in Docker Desktop (Settings → Kubernetes), then:
+
+```powershell
+kubectl config use-context docker-desktop
+docker build -t heart-disease-api:1.1 .   # Docker Desktop k8s uses the local image store
+
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+kubectl -n heart-disease rollout status deployment/heart-disease-api
+kubectl -n heart-disease get pods,svc
+
+# Service is exposed at http://localhost (port 80)
+Invoke-RestMethod http://localhost/health
+Invoke-RestMethod -Method Post -Uri http://localhost/predict `
+  -ContentType "application/json" -InFile sample_request.json
+```
+
+Tear down with `kubectl delete namespace heart-disease`.
+
+_Further sections (monitoring) are added as each phase is completed._
