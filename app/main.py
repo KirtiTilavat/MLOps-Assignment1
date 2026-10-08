@@ -6,8 +6,15 @@ Run locally:
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 
+from app.monitoring import (
+    MODEL_INFO,
+    log_event,
+    metrics_response,
+    observe_request,
+    record_prediction,
+)
 from app.schemas import HealthResponse, PatientFeatures, PredictionResponse
 from src.predict import load_metadata, load_model, predict
 
@@ -19,6 +26,9 @@ async def lifespan(_: FastAPI):
     # Load once at startup so every request reuses the same pipeline.
     state["model"] = load_model()
     state["metadata"] = load_metadata()
+    meta = state["metadata"]
+    MODEL_INFO.labels(meta.get("model_name", "unknown"), meta.get("trained_at", "unknown")).set(1)
+    log_event("model_loaded", model_name=meta.get("model_name"), trained_at=meta.get("trained_at"))
     yield
     state.clear()
 
@@ -30,6 +40,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.middleware("http")(observe_request)
 
 
 @app.get("/")
@@ -53,6 +64,13 @@ def health() -> HealthResponse:
 
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict_endpoint(patient: PatientFeatures) -> PredictionResponse:
-    [result] = predict(patient.model_dump(), model=state["model"])
+def predict_endpoint(patient: PatientFeatures, request: Request) -> PredictionResponse:
+    features = patient.model_dump()
+    [result] = predict(features, model=state["model"])
+    record_prediction(request.state.request_id, features, result)
     return PredictionResponse(**result, model_name=state["metadata"].get("model_name", "unknown"))
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return metrics_response()

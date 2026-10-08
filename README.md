@@ -79,7 +79,7 @@ Run without Docker: `uvicorn app.main:app --port 8000`
 ## Docker
 
 ```powershell
-docker build -t heart-disease-api:1.1 .
+docker build -t heart-disease-api:1.2 .
 docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.1
 
 # PowerShell
@@ -138,7 +138,7 @@ Enable Kubernetes in Docker Desktop (Settings → Kubernetes), then:
 
 ```powershell
 kubectl config use-context docker-desktop
-docker build -t heart-disease-api:1.1 .   # Docker Desktop k8s uses the local image store
+docker build -t heart-disease-api:1.2 .   # Docker Desktop k8s uses the local image store
 
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
@@ -153,4 +153,43 @@ Invoke-RestMethod -Method Post -Uri http://localhost/predict `
 
 Tear down with `kubectl delete namespace heart-disease`.
 
-_Further sections (monitoring) are added as each phase is completed._
+## Monitoring & logging
+
+**Request logging.** Every request is written to stdout as one JSON line (`request_id`,
+method, path, status, `duration_ms`, client). Each `/predict` call also logs a
+`prediction` event with the input features, predicted class, probability and risk level.
+Clients can send an `X-Request-ID` header (one is generated otherwise), and the response
+echoes it back so a log line can be matched to its call. `/health` and `/metrics` are
+left out of the logs because probes and the scraper call them every few seconds.
+
+```powershell
+docker logs heart-disease-monitoring-api-1 --tail 5               # Docker / compose
+kubectl -n heart-disease logs deploy/heart-disease-api --tail 5   # Kubernetes
+```
+
+**Metrics.** `GET /metrics` exposes Prometheus metrics:
+
+| Metric | Type | What it shows |
+|---|---|---|
+| `heart_api_requests_total{method,path,status}` | counter | traffic and error rate per route |
+| `heart_api_request_duration_seconds{method,path}` | histogram | latency percentiles |
+| `heart_api_requests_in_progress` | gauge | concurrent requests |
+| `heart_api_predictions_total{label,risk_level}` | counter | prediction mix, a basic drift signal |
+| `heart_api_probability_disease` | histogram | distribution of model scores |
+| `heart_api_model_info{model_name,trained_at}` | gauge | which model version is serving |
+
+**Dashboard.** `monitoring/` holds a Docker Compose stack (API + Prometheus + Grafana).
+Prometheus scrapes the API every 5 s and loads three alert rules (`ApiDown`,
+`HighErrorRate`, `SlowPredictions`). Grafana starts with the data source and the
+*Heart Disease API — Service & Model Monitoring* dashboard already set up.
+
+```powershell
+docker compose -f monitoring/docker-compose.yml up -d --build
+python scripts/generate_traffic.py --n 300            # send demo traffic
+# Grafana    http://localhost:3000   (admin / admin)
+# Prometheus http://localhost:9090   (Status -> Targets, Alerts)
+docker compose -f monitoring/docker-compose.yml down
+```
+
+The k8s pods carry `prometheus.io/*` annotations, so an in-cluster Prometheus can
+discover and scrape them in the same way.

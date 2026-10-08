@@ -20,15 +20,20 @@ spec:
     metadata:
       labels:
         app: heart-disease-api
+      annotations:
+        # Lets a cluster Prometheus (e.g. kube-prometheus) discover the pods.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
       containers:
         - name: api
-          # Built locally with: docker build -t heart-disease-api:1.1 .
+          # Built locally with: docker build -t heart-disease-api:1.2 .
           # Docker Desktop Kubernetes shares the local Docker image store.
-          image: heart-disease-api:1.1
+          image: heart-disease-api:1.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
