@@ -80,7 +80,7 @@ Run without Docker: `uvicorn app.main:app --port 8000`
 
 ```powershell
 docker build -t heart-disease-api:1.2 .
-docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.1
+docker run -d --name heart-api -p 8000:8000 heart-disease-api:1.2
 
 # PowerShell
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict `
