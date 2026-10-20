@@ -27,6 +27,7 @@ MLOps Assignment 1 Instructions.pdf
 .vscode/
 .idea/
 Thumbs.db
+~$*
 .DS_Store
 
 # Screen recordings: raw captures are too large for git; only compressed copies are committed
