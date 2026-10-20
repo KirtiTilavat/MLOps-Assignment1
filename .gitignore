@@ -28,3 +28,7 @@ MLOps Assignment 1 Instructions.pdf
 .idea/
 Thumbs.db
 .DS_Store
+
+# Screen recordings: raw captures are too large for git; only compressed copies are committed
+*.mp4
+!video-recording/*-compressed.mp4
